@@ -1,0 +1,319 @@
+<head>
+  <script src="https://unpkg.com/vue@2.1.5/dist/vue.js"></script>
+  <script src="https://unpkg.com/vue-youtube-embed@1.0.0/lib/vue-youtube-embed.js"></script>
+  <script src="https://unpkg.com/vue-resource@1.0.3/dist/vue-resource.js"></script>
+  <script src='https://unpkg.com/underscore@1.8.3/underscore-min.js'></script>
+  <script src='js/app.js'></script>
+  <link href="css/app.css" rel="stylesheet" type="text/css">
+  <style>
+.pads{
+  display: inline-block;
+}
+  [v-cloak] { display: none; }
+  </style>
+  <title>
+    S-17
+  </title>
+</head>
+<section class="samplr">
+  <header class="header">
+    <h1>S-17</h1>
+    <input class="edit-half"
+      autofocus autocomplete="off"
+      placeholder="youtube id"
+      v-model="newsample.id">
+    <input class="edit-half"
+      autofocus autocomplete="off"
+      maxchars='1'
+      placeholder="trigger (key)"
+      v-model="newsample.trigger">
+    <input class="edit-half"
+      autofocus autocomplete="off"
+      placeholder="start time"
+      type='number'
+      @blur="addsample"
+      v-model="newsample.start">
+
+      <button class='edit' v-on:click='addsample'>
+        add sample
+      </button>
+  </header>
+  <section class="main" v-show="samples.length" v-cloak>
+    <input class="toggle-all" type="checkbox" v-model="allDone">
+    <ul class="sample-list">
+      <span v-for="(sample, i) in filteredsamples"
+        class="sample"
+        :key="sample.id"
+        :class="{ editing: sample == editedsample }">
+        <div class="pads">
+          <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:1 ,inline:1}" player-width="150" player-height="150" @ready='ready' :video-id='sample.id'></youtube>
+          <label @dblclick="editsample(sample)">{{ sample.trigger }} ~ {{ sample.id }}</label>
+          <button class="destroy" @click="duplicate(sample)">++</button>
+          <button class="destroy" @click="removesample(sample)">X</button>
+        </div>
+        <div class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
+          <input class="edit-half" type="text"
+            v-model="sample.id"
+            placeholder="youtube ID"
+            v-sample-focus="sample == editedsample">
+          <input class="edit-half" type="text"
+          v-model="sample.trigger"
+          v-sample-focus="sample == editedsample"
+          placeholder="trigger">
+          <input class="edit-half" type="text"
+          v-model="sample.start"
+          type="number"
+          v-sample-focus="sample == editedsample"
+          @blur="doneEdit(sample)"
+          placeholder="start time"
+          @keyup.esc="cancelEdit(sample)">
+
+          <button v-on:click='addsample' class='save'>
+            (save)
+          </button>
+        </div>
+      </span>
+    </ul>
+  </section>
+  <footer class="footer" v-cloak>
+    <span class="sample-count">
+      <strong>{{ remaining }}</strong> {{ remaining | pluralize }} registered
+      <a v-show="samples.length" :href='serialized'>
+        share link
+      </a>
+      <button  v-show="hash_present" v-on:click="loadHashState()">
+        load from hash
+      </button>
+    </span>
+  </footer>
+</section>
+<footer class="info">
+  <p>Double-click to edit a sample</p>
+</footer>
+<style>
+.time{
+  width:27px;
+}
+</style>
+<script url='https://www.youtube.com/player_api'></script>
+<script>
+// localStorage persistence
+var STORAGE_KEY = 's a m p l r 1 7'
+Vue.use(VueYouTubeEmbed)
+window.stems = {}
+
+window.active_pads = {}
+window.unassigned_pads = ['q','w','e','r','a','s','d','f','z','x','c','v']
+
+var sampleStorage = {
+  fetch: function () {
+    var samples = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    samples.forEach(function (sample, index) {
+      sample.index = index
+    })
+    sampleStorage.uid = samples.length
+    return samples
+  },
+  save: function (samples) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(samples))
+  }
+}
+// visibility filters
+var filters = {
+  all: function (samples) {
+    return samples
+  },
+  active: function (samples) {
+    return samples.filter(function (sample) {
+      return !sample.discounted
+    })
+  },
+  discount: function (samples) {
+    return samples.filter(function (sample) {
+      return sample.discounted
+    })
+  }
+}
+// app Vue instance
+var samplr = new Vue({
+  // app initial state
+  data: {
+    samples: sampleStorage.fetch(),
+    newsample: {},
+    editedsample: null,
+    visibility: 'all'
+  },
+  // watch samples change for localStorage persistence
+  watch: {
+    samples: {
+      handler: function (samples) {
+        sampleStorage.save(samples)
+      },
+      deep: true
+    }
+  },
+  // computed properties
+  // http://vuejs.org/guide/computed.html
+  computed: {
+    hash_present:function(){
+      return window.hash_state.length!=0;
+    },
+    serialized:function(){
+      return window.location.origin+"/#"+encodeURIComponent(JSON.stringify(this.samples));
+    },
+    filteredsamples: function () {
+      return filters[this.visibility](this.samples)
+    },
+    remaining: function () {
+      return filters.active(this.samples).length
+    },
+    allDone: {
+      get: function () {
+        return this.remaining === 0
+      },
+      set: function (value) {
+        this.samples.forEach(function (sample) {
+          sample.discounted = value
+        })
+      }
+    }
+  },
+  filters: {
+    pluralize: function (n) {
+      return n === 1 ? 'sample' : 'samples'
+    }
+  },
+  // methods that implement data logic.
+  // note there's no DOM manipulation here at all.
+  methods: {
+    loadHashState:function(){
+      this.samples = JSON.parse(hash_state);
+    },
+    ready:function(player){
+      var trigger = player.b.c.playerVars.trigger;
+      player.clip_id = player.b.c.playerVars.clip_id;
+      player.start = player.b.c.playerVars.start;
+      window.stems[trigger] = player
+      window.active_pads[trigger]=false;
+      window.unassigned_pads.splice(trigger,1);
+      player.playVideo();
+      player.pauseVideo();
+    },
+    duplicate:function(sample){
+      var value = sample
+      if (!value || !value.trigger || !value.start || !value.id) {
+        return
+      }
+      this.samples.push({
+        id: value.id,
+        trigger: window.unassigned_pads.pop(),
+        start: value.start,
+        duration: value.duration,
+        loop: value.loop
+      })
+      this.newsample = {}
+    },
+    trigger:function(key){
+      var clip_launcher = stems[key];
+      if (!clip_launcher){
+        return;
+      }
+      clip_launcher.playVideo();
+      clip_launcher.seekTo(clip_launcher.start)
+      window.active_pads[key]=true;
+    },
+    startNow:function(key){
+      var clip_launcher = stems[key];
+      var sample = this.samples[clip_launcher.clip_id];
+      sample.start=clip_launcher.getCurrentTime();
+      clip_launcher.start=sample.start;
+    },
+    loop:function(key){
+      var clip_launcher = stems[key];
+      var sample = this.samples[clip_launcher.clip_id];
+      sample.loop=true;
+      clip_launcher.seekTo(clip_launcher.start);
+    },
+
+    addsample: function () {
+      var value = this.newsample
+      if (!value || !value.trigger || !value.start || !value.id) {
+        return
+      }
+      this.samples.push({
+        id: value.id,
+        trigger: value.trigger,
+        start: value.start,
+        duration: value.duration,
+        loop: false
+      })
+      this.newsample = {}
+    },
+    removesample: function (sample) {
+      this.samples.splice(this.samples.indexOf(sample), 1)
+    },
+    editsample: function (sample) {
+      this.beforeEditCache = sample
+      this.editedsample = sample
+    },
+    doneEdit: function (sample) {
+      if (!this.editedsample) {
+        return
+      }
+      this.editedsample = null
+    },
+    cancelEdit: function (sample) {
+      this.editedsample = null
+      sample.title = this.beforeEditCache
+    },
+    removediscounted: function () {
+      this.samples = filters.active(this.samples)
+    }
+  },
+  // a custom directive to wait for the DOM to be updated
+  // before focusing on the input field.
+  // http://vuejs.org/guide/custom-directive.html
+  directives: {
+    'sample-focus': function (el, value) {
+      if (value) {
+        el.focus()
+      }
+    }
+  }
+})
+// handle routing
+function onHashChange () {
+  var hash = window.location.hash.replace(/#\/?/, '')
+  window.hash_state = decodeURIComponent(hash)
+  if (!window.samplr){
+    return;
+  }
+  if (window.samplr.samples.length==0||hash.length==0){
+    return;
+  }
+}
+window.addEventListener('hashchange', onHashChange)
+onHashChange()
+// mount
+samplr.$mount('.samplr')
+window.onkeydown = function(e){
+  var key = e.key.toLowerCase()
+  var idle_pad =  window.active_pads[key] == false;
+  if (idle_pad){
+    samplr.trigger(key);
+  }else{
+    return;
+  }
+  if (e.ctrlKey){
+    samplr.loop(key);
+  }
+  if (e.shiftKey){
+    samplr.startNow(key);
+  }
+
+};
+window.onkeyup = function(e){
+  window.active_pads[e.key]=false
+};
+
+</script>
