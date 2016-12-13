@@ -5,19 +5,27 @@
   <script src='https://unpkg.com/underscore@1.8.3/underscore-min.js'></script>
   <script src='js/app.js'></script>
   <link href="css/app.css" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet">
   <style>
 .pads{
   display: inline-block;
 }
+html{
+  font-family: 'Indie Flower', cursive;
+  background-color: pink;
+}
+input{
+  font-family: 'Indie Flower', cursive;
+}
   [v-cloak] { display: none; }
   </style>
   <title>
-    S-17
+    TS-17
   </title>
 </head>
 <section class="samplr">
   <header class="header">
-    <h1>S-17</h1>
+    <h1>TS-17</h1>
     <input class="edit-half"
       autofocus autocomplete="off"
       placeholder="youtube id"
@@ -25,7 +33,7 @@
     <input class="edit-half"
       autofocus autocomplete="off"
       maxchars='1'
-      placeholder="trigger (key)"
+      placeholder="trigger // key"
       v-model="newsample.trigger">
     <input class="edit-half"
       autofocus autocomplete="off"
@@ -64,12 +72,11 @@
           v-model="sample.start"
           type="number"
           v-sample-focus="sample == editedsample"
-          @blur="doneEdit(sample)"
           placeholder="start time"
           @keyup.esc="cancelEdit(sample)">
 
-          <button v-on:click='addsample' class='save'>
-            (save)
+          <button v-on:click='doneEdit(sample)' class='save'>
+            (complete)
           </button>
         </div>
       </span>
@@ -89,6 +96,8 @@
 </section>
 <footer class="info">
   <p>Double-click to edit a sample</p>
+  <p>shift-press trigger set new start time ~</p>
+  <p>ctrl-press trigger set loop time ~</p>
 </footer>
 <style>
 .time{
@@ -147,9 +156,22 @@ var samplr = new Vue({
   watch: {
     samples: {
       handler: function (samples) {
+        console.log('local storage saved');
         sampleStorage.save(samples)
       },
       deep: true
+    },editedsample:{
+      handler: function (sample) {
+        var oldSample=this.beforeEditCache;
+        if (!sample){
+          return;
+        }
+        if (window.stems && sample && oldSample && oldSample.trigger && sample.trigger && oldSample.trigger != sample.trigger){
+          console.log(oldSample.trigger,"=>",sample.trigger);
+          Object.defineProperty(stems, sample.trigger,Object.getOwnPropertyDescriptor(stems, oldSample.trigger));
+          delete stems[oldSample.trigger]
+        }
+      }
     }
   },
   // computed properties
@@ -183,16 +205,18 @@ var samplr = new Vue({
       return n === 1 ? 'sample' : 'samples'
     }
   },
-  // methods that implement data logic.
-  // note there's no DOM manipulation here at all.
   methods: {
     loadHashState:function(){
       this.samples = JSON.parse(hash_state);
     },
     ready:function(player){
       var trigger = player.b.c.playerVars.trigger;
-      player.clip_id = player.b.c.playerVars.clip_id;
-      player.start = player.b.c.playerVars.start;
+      player.clip_id =function(){
+        return player.b.c.playerVars.clip_id;
+      };
+      player.start = function(){
+        return player.b.c.playerVars.start;
+      }
       window.stems[trigger] = player
       window.active_pads[trigger]=false;
       window.unassigned_pads.splice(trigger,1);
@@ -224,15 +248,15 @@ var samplr = new Vue({
     },
     startNow:function(key){
       var clip_launcher = stems[key];
-      var sample = this.samples[clip_launcher.clip_id];
+      var sample = this.samples[clip_launcher.clip_id()];
       sample.start=clip_launcher.getCurrentTime();
       clip_launcher.start=sample.start;
     },
-    loop:function(key){
+    decay:function(key){
       var clip_launcher = stems[key];
-      var sample = this.samples[clip_launcher.clip_id];
-      sample.loop=true;
-      clip_launcher.seekTo(clip_launcher.start);
+      var sample = this.samples[clip_launcher.clip_id()];
+//      sample.loop=true;
+  //    clip_launcher.seekTo(clip_launcher.start);
     },
 
     addsample: function () {
@@ -253,18 +277,21 @@ var samplr = new Vue({
       this.samples.splice(this.samples.indexOf(sample), 1)
     },
     editsample: function (sample) {
-      this.beforeEditCache = sample
+      this.beforeEditCache = Vue.util.extend({}, sample)
       this.editedsample = sample
     },
     doneEdit: function (sample) {
-      if (!this.editedsample) {
+      if (!sample,!sample.trigger) {
         return
       }
+      var index = this.samples.indexOf(sample)
+      Vue.set(this.samples,index, sample);
       this.editedsample = null
+
     },
     cancelEdit: function (sample) {
       this.editedsample = null
-      sample.title = this.beforeEditCache
+      sample = this.beforeEditCache
     },
     removediscounted: function () {
       this.samples = filters.active(this.samples)
@@ -305,7 +332,7 @@ window.onkeydown = function(e){
     return;
   }
   if (e.ctrlKey){
-    samplr.loop(key);
+    samplr.decay(key);
   }
   if (e.shiftKey){
     samplr.startNow(key);
