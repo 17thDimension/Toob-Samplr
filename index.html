@@ -248,6 +248,7 @@ var samplr = new Vue({
     decay:function(key){
       var clip_launcher = stems[key];
       if (clip_launcher){
+        console.log('decay')
         clip_launcher.pauseVideo();
       }
     },
@@ -333,9 +334,11 @@ window.onkeydown = function(e){
   var idle_pad =  window.active_pads[key] == false;
   if (e.ctrlKey){
     samplr.decay(key);
+    return;
   }
   if (e.shiftKey){
     samplr.startNow(key);
+    return;
   }
   if (idle_pad){
     samplr.trigger(key);
