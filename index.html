@@ -14,6 +14,9 @@ html{
   font-family: 'Indie Flower', cursive;
   background-color: pink;
 }
+.pads{
+  text-align: center;
+}
 input{
   font-family: 'Indie Flower', cursive;
 }
@@ -24,8 +27,9 @@ input{
   </title>
 </head>
 <section class="samplr">
-  <header v-if='adding'>
+  <header>
     <h1>TS-17</h1>
+    <div class='add-sample' v-if='adding'>
     <input class="edit-half"
       autofocus autocomplete="off"
       placeholder="youtube id"
@@ -45,6 +49,7 @@ input{
       <button class='edit' v-on:click='addsample'>
         add sample
       </button>
+    </div>
   </header>
   <button class='edit' v-on:click='adding = true'>
     new sample
@@ -58,8 +63,8 @@ input{
         :class="{ editing: sample == editedsample }">
         <div class="pads">
           <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:1 ,inline:1}" player-width="150" player-height="150" @ready='ready' :video-id='sample.id'></youtube>
-          <label @dblclick="editsample(sample)">{{ sample.trigger }} ~ {{ sample.id }}</label>
-          <button class="destroy" @click="duplicate(sample)">++</button>
+          <button class="duplicate" @click="duplicate(sample)">+</button>
+          <label @dblclick="editsample(sample)">~ {{ sample.trigger }} ~ </label>
           <button class="destroy" @click="removesample(sample)">X</button>
         </div>
         <span class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
@@ -79,9 +84,6 @@ input{
       <a v-show="samples.length" :href='serialized'>
         share link
       </a>
-      <button  v-show="hash_present" v-on:click="loadHashState()">
-        load from hash
-      </button>
     </span>
   </footer>
 </section>
@@ -148,7 +150,6 @@ var samplr = new Vue({
   watch: {
     samples: {
       handler: function (samples) {
-        console.log('local storage saved');
         sampleStorage.save(samples)
       },
       deep: true
@@ -246,9 +247,9 @@ var samplr = new Vue({
     },
     decay:function(key){
       var clip_launcher = stems[key];
-      var sample = this.samples[clip_launcher.clip_id()];
-//      sample.loop=true;
-  //    clip_launcher.seekTo(clip_launcher.start);
+      if (clip_launcher){
+        clip_launcher.pauseVideo();
+      }
     },
 
     addsample: function () {
@@ -323,6 +324,7 @@ onHashChange()
 // mount
 samplr.$mount('.samplr')
 window.onkeydown = function(e){
+  console.log(e);
   if (e.keyCode==16){
     window.active_pads;
     return;
