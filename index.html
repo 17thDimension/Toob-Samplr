@@ -264,6 +264,9 @@ var samplr = new Vue({
       if (!value || !value.trigger || !value.start || !value.id) {
         return
       }
+      if (value.id.indexOf('?v=')!=-1){
+        value.id=value.id.substring(value.id.indexOf('?v=')+3);
+      }
       this.samples.push({
         id: value.id,
         trigger: value.trigger,
