@@ -312,6 +312,7 @@ var samplr = new Vue({
 function onHashChange () {
   var hash = window.location.hash.replace(/#\/?/, '')
   window.hash_state = decodeURIComponent(hash)
+  window.setTimeout(samplr.loadHashState, 2000);
   if (!window.samplr){
     return;
   }
@@ -324,7 +325,6 @@ onHashChange()
 // mount
 samplr.$mount('.samplr')
 window.onkeydown = function(e){
-  console.log(e);
   if (e.keyCode==16){
     window.active_pads;
     return;
