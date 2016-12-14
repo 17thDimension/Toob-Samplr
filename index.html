@@ -3,7 +3,7 @@
   <script src="https://unpkg.com/vue-youtube-embed@1.0.0/lib/vue-youtube-embed.js"></script>
   <script src="https://unpkg.com/vue-resource@1.0.3/dist/vue-resource.js"></script>
   <script src='https://unpkg.com/underscore@1.8.3/underscore-min.js'></script>
-  <script src='js/app.js'></script>
+  <script url='https://www.youtube.com/player_api'></script>
   <link href="css/app.css" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet">
   <style>
@@ -45,6 +45,12 @@ input{
       type='number'
       @blur="addsample"
       v-model="newsample.start">
+      <input class="edit-half"
+        autofocus autocomplete="off"
+        placeholder="end time"
+        type='number'
+        @blur="addsample"
+        v-model="newsample.end">
 
       <button class='edit' v-on:click='addsample'>
         add sample
@@ -64,7 +70,7 @@ input{
         <div class="pads">
           <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:1 ,inline:1}" player-width="150" player-height="150" @ready='ready' :video-id='sample.id'></youtube>
           <button class="duplicate" @click="duplicate(sample)">+</button>
-          <label @dblclick="editsample(sample)">~ {{ sample.trigger }} ~ </label>
+          <label @dblclick="editsample(sample)">{{sample.loop?'∞':'~'}} {{ sample.trigger }} {{sample.loop?'∞':'~'}} </label>
           <button class="destroy" @click="removesample(sample)">X</button>
         </div>
         <span class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
@@ -89,264 +95,13 @@ input{
 </section>
 <footer class="info">
   <p>Double-click to edit a sample</p>
-  <p>shift-press trigger set new start time ~</p>
-  <p>ctrl-press trigger set end ~</p>
+  <p>shift-press trigger sets a new start time ~</p>
+  <p>ctrl-press trigger sets end ~</p>
+  <p>ctrl-shift-press trigger toggles loop ~</p>
 </footer>
 <style>
 .time{
   width:27px;
 }
 </style>
-<script url='https://www.youtube.com/player_api'></script>
-<script>
-// localStorage persistence
-var STORAGE_KEY = 's a m p l r 1 7'
-Vue.use(VueYouTubeEmbed)
-window.stems = {}
-
-window.active_pads = {}
-window.unassigned_pads = ['q','w','e','r','a','s','d','f','z','x','c','v']
-
-var sampleStorage = {
-  fetch: function () {
-    var samples = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    samples.forEach(function (sample, index) {
-      sample.index = index
-    })
-    sampleStorage.uid = samples.length
-    return samples
-  },
-  save: function (samples) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(samples))
-  }
-}
-// visibility filters
-var filters = {
-  all: function (samples) {
-    return samples
-  },
-  active: function (samples) {
-    return samples.filter(function (sample) {
-      return !sample.discounted
-    })
-  },
-  discount: function (samples) {
-    return samples.filter(function (sample) {
-      return sample.discounted
-    })
-  }
-}
-// app Vue instance
-var samplr = new Vue({
-  // app initial state
-  data: {
-    samples: sampleStorage.fetch(),
-    newsample: {},
-    adding: false,
-    editedsample: null,
-    visibility: 'all'
-  },
-  // watch samples change for localStorage persistence
-  watch: {
-    samples: {
-      handler: function (samples) {
-        sampleStorage.save(samples)
-      },
-      deep: true
-    },editedsample:{
-      handler: function (sample) {
-        var oldSample=this.beforeEditCache;
-        if (!sample){
-          return;
-        }
-        if (window.stems && sample && oldSample && oldSample.trigger && sample.trigger && oldSample.trigger != sample.trigger){
-          console.log(oldSample.trigger,"=>",sample.trigger);
-          Object.defineProperty(stems, sample.trigger,Object.getOwnPropertyDescriptor(stems, oldSample.trigger));
-          delete stems[oldSample.trigger]
-        }
-      }
-    }
-  },
-  // computed properties
-  // http://vuejs.org/guide/computed.html
-  computed: {
-    hash_present:function(){
-      return window.hash_state.length!=0;
-    },
-    serialized:function(){
-      return window.location.origin+"/#"+encodeURIComponent(JSON.stringify(this.samples));
-    },
-    filteredsamples: function () {
-      return filters[this.visibility](this.samples)
-    },
-    remaining: function () {
-      return filters.active(this.samples).length
-    },
-    allDone: {
-      get: function () {
-        return this.remaining === 0
-      },
-      set: function (value) {
-        this.samples.forEach(function (sample) {
-          sample.discounted = value
-        })
-      }
-    }
-  },
-  filters: {
-    pluralize: function (n) {
-      return n === 1 ? 'sample' : 'samples'
-    }
-  },
-  methods: {
-    loadHashState:function(){
-      this.samples = JSON.parse(hash_state);
-    },
-    ready:function(player){
-      var trigger = player.b.c.playerVars.trigger;
-      player.clip_id =function(){
-        return player.b.c.playerVars.clip_id;
-      };
-      player.start = function(){
-        return player.b.c.playerVars.start;
-      }
-      window.stems[trigger] = player
-      window.active_pads[trigger]=false;
-      window.unassigned_pads.splice(trigger,1);
-      player.playVideo();
-      player.pauseVideo();
-    },
-    duplicate:function(sample){
-      var value = sample
-      if (!value || !value.trigger || !value.start || !value.id) {
-        return
-      }
-      this.samples.push({
-        id: value.id,
-        trigger: window.unassigned_pads.pop(),
-        start: value.start,
-        duration: value.duration,
-        loop: value.loop
-      })
-      this.newsample = {}
-    },
-    trigger:function(key){
-      var clip_launcher = stems[key];
-      if (!clip_launcher){
-        return;
-      }
-      clip_launcher.playVideo();
-      clip_launcher.seekTo(clip_launcher.start)
-      window.active_pads[key]=true;
-    },
-    startNow:function(key){
-      var clip_launcher = stems[key];
-      var sample = this.samples[clip_launcher.clip_id()];
-      sample.start=clip_launcher.getCurrentTime();
-      clip_launcher.start=sample.start;
-    },
-    decay:function(key){
-      var clip_launcher = stems[key];
-      if (clip_launcher){
-        console.log('decay')
-        clip_launcher.pauseVideo();
-      }
-    },
-
-    addsample: function () {
-      var value = this.newsample
-      if (!value || !value.trigger || !value.start || !value.id) {
-        return
-      }
-      if (value.id.indexOf('?v=')!=-1){
-        value.id=value.id.substring(value.id.indexOf('?v=')+3);
-      }
-      this.samples.push({
-        id: value.id,
-        trigger: value.trigger,
-        start: value.start,
-        duration: value.duration,
-        loop: false
-      })
-      this.newsample = {}
-      this.adding=false;
-    },
-    removesample: function (sample) {
-      this.samples.splice(this.samples.indexOf(sample), 1)
-    },
-    editsample: function (sample) {
-      this.beforeEditCache = Vue.util.extend({}, sample)
-      this.editedsample = sample
-    },
-    doneEdit: function (sample) {
-      if (!sample,!sample.trigger) {
-        return
-      }
-      if (sample.id.indexOf('?v=')!=-1){
-        sample.id=sample.id.substring(sample.id.indexOf('?v=')+3);
-      }
-      var index = this.samples.indexOf(sample)
-      Vue.set(this.samples,index, sample);
-      this.editedsample = null
-
-    },
-    cancelEdit: function (sample) {
-      this.editedsample = null
-      sample = this.beforeEditCache
-    },
-    removediscounted: function () {
-      this.samples = filters.active(this.samples)
-    }
-  },
-  // a custom directive to wait for the DOM to be updated
-  // before focusing on the input field.
-  // http://vuejs.org/guide/custom-directive.html
-  directives: {
-    'sample-focus': function (el, value) {
-      if (value) {
-        el.focus()
-      }
-    }
-  }
-})
-// handle routing
-function onHashChange () {
-  var hash = window.location.hash.replace(/#\/?/, '')
-  window.hash_state = decodeURIComponent(hash)
-  window.setTimeout(samplr.loadHashState, 2000);
-  if (!window.samplr){
-    return;
-  }
-  if (window.samplr.samples.length==0||hash.length==0){
-    return;
-  }
-}
-window.addEventListener('hashchange', onHashChange)
-onHashChange()
-// mount
-samplr.$mount('.samplr')
-window.onkeydown = function(e){
-  if (e.keyCode==16){
-    window.active_pads;
-    return;
-  }
-  var key = e.key.toLowerCase()
-  var idle_pad =  window.active_pads[key] == false;
-  if (e.ctrlKey){
-    samplr.decay(key);
-    return;
-  }
-  if (e.shiftKey){
-    samplr.startNow(key);
-    return;
-  }
-  if (idle_pad){
-    samplr.trigger(key);
-  }
-
-};
-window.onkeyup = function(e){
-  window.active_pads[e.key]=false
-};
-
-</script>
+<script src='js/app.js'></script>
