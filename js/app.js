@@ -196,14 +196,13 @@ var samplr = new Vue({
       var sample = this.samples[clip_launcher.clip_id()];
       sample.loop = !sample.loop;
       if(sample.loop){
-        console.log('get loopy')
         this.trigger(key);
       }else{
         if (clip_launcher.hasOwnProperty('loop')){
           clearInterval(clip_launcher.loop);
           delete clip_launcher.loop;
         }
-        this.decay();
+        this.decay(key);
       }
     },
     setEnd:function(key){
