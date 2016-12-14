@@ -55,7 +55,6 @@ input{
     new sample
   </button>
   <section class="main" v-show="samples.length" v-cloak>
-    <input class="toggle-all" type="checkbox" v-model="allDone">
     <ul class="sample-list">
       <span v-for="(sample, i) in filteredsamples"
         class="sample"
@@ -91,6 +90,7 @@ input{
   <p>Double-click to edit a sample</p>
   <p>shift-press trigger set new start time ~</p>
   <p>ctrl-press trigger set end ~</p>
+  <a href='https://github.com/17thDimension/Toob-Samplr/issues/new'>issues?</a>
 </footer>
 <style>
 .time{
@@ -127,12 +127,7 @@ var filters = {
   },
   active: function (samples) {
     return samples.filter(function (sample) {
-      return !sample.discounted
-    })
-  },
-  discount: function (samples) {
-    return samples.filter(function (sample) {
-      return sample.discounted
+      return !sample.active
     })
   }
 }
@@ -181,16 +176,6 @@ var samplr = new Vue({
     },
     remaining: function () {
       return filters.active(this.samples).length
-    },
-    allDone: {
-      get: function () {
-        return this.remaining === 0
-      },
-      set: function (value) {
-        this.samples.forEach(function (sample) {
-          sample.discounted = value
-        })
-      }
     }
   },
   filters: {
@@ -294,7 +279,7 @@ var samplr = new Vue({
       this.editedsample = null
       sample = this.beforeEditCache
     },
-    removediscounted: function () {
+    removeActive: function () {
       this.samples = filters.active(this.samples)
     }
   },
