@@ -24,7 +24,7 @@ input{
   </title>
 </head>
 <section class="samplr">
-  <header class="header">
+  <header v-if='adding'>
     <h1>TS-17</h1>
     <input class="edit-half"
       autofocus autocomplete="off"
@@ -46,6 +46,9 @@ input{
         add sample
       </button>
   </header>
+  <button class='edit' v-on:click='adding = true'>
+    new sample
+  </button>
   <section class="main" v-show="samples.length" v-cloak>
     <input class="toggle-all" type="checkbox" v-model="allDone">
     <ul class="sample-list">
@@ -59,26 +62,14 @@ input{
           <button class="destroy" @click="duplicate(sample)">++</button>
           <button class="destroy" @click="removesample(sample)">X</button>
         </div>
-        <div class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
+        <span class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
           <input class="edit-half" type="text"
             v-model="sample.id"
-            placeholder="youtube ID"
-            v-sample-focus="sample == editedsample">
-          <input class="edit-half" type="text"
-          v-model="sample.trigger"
-          v-sample-focus="sample == editedsample"
-          placeholder="trigger">
-          <input class="edit-half" type="text"
-          v-model="sample.start"
-          type="number"
-          v-sample-focus="sample == editedsample"
-          placeholder="start time"
-          @keyup.esc="cancelEdit(sample)">
-
+            placeholder="youtube ID">
           <button v-on:click='doneEdit(sample)' class='save'>
             (complete)
           </button>
-        </div>
+        </span>
       </span>
     </ul>
   </section>
@@ -97,7 +88,7 @@ input{
 <footer class="info">
   <p>Double-click to edit a sample</p>
   <p>shift-press trigger set new start time ~</p>
-  <p>ctrl-press trigger set loop time ~</p>
+  <p>ctrl-press trigger set end ~</p>
 </footer>
 <style>
 .time{
@@ -149,6 +140,7 @@ var samplr = new Vue({
   data: {
     samples: sampleStorage.fetch(),
     newsample: {},
+    adding: false,
     editedsample: null,
     visibility: 'all'
   },
@@ -275,6 +267,7 @@ var samplr = new Vue({
         loop: false
       })
       this.newsample = {}
+      this.adding=false;
     },
     removesample: function (sample) {
       this.samples.splice(this.samples.indexOf(sample), 1)
@@ -286,6 +279,9 @@ var samplr = new Vue({
     doneEdit: function (sample) {
       if (!sample,!sample.trigger) {
         return
+      }
+      if (sample.id.indexOf('?v=')!=-1){
+        sample.id=sample.id.substring(sample.id.indexOf('?v=')+3);
       }
       var index = this.samples.indexOf(sample)
       Vue.set(this.samples,index, sample);
@@ -327,18 +323,20 @@ onHashChange()
 // mount
 samplr.$mount('.samplr')
 window.onkeydown = function(e){
-  var key = e.key.toLowerCase()
-  var idle_pad =  window.active_pads[key] == false;
-  if (idle_pad){
-    samplr.trigger(key);
-  }else{
+  if (e.keyCode==16){
+    window.active_pads;
     return;
   }
+  var key = e.key.toLowerCase()
+  var idle_pad =  window.active_pads[key] == false;
   if (e.ctrlKey){
     samplr.decay(key);
   }
   if (e.shiftKey){
     samplr.startNow(key);
+  }
+  if (idle_pad){
+    samplr.trigger(key);
   }
 
 };
