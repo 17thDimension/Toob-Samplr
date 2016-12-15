@@ -25,12 +25,7 @@ var filters = {
   },
   active: function (samples) {
     return samples.filter(function (sample) {
-      return !sample.discounted
-    })
-  },
-  discount: function (samples) {
-    return samples.filter(function (sample) {
-      return sample.discounted
+      return active_pads.hasOwnProperty(sample.trigger) && active_pads[sample.trigger]
     })
   }
 }
