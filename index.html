@@ -89,16 +89,14 @@ input{
 </section>
   <footer class="footer" v-cloak>
     <span class="sample-count">
-
-
-      <strong>{{ remaining }}</strong> {{ remaining | pluralize }} registered
+      <strong>{{ samples.length }}</strong> {{ samples | pluralize }} registered
+      <a v-show="samples.length" :href='serialized'>
+        share pad
+      </a>
     </span>
   </footer>
 </section>
 <footer class="info">
-  <a v-show="samples.length" :href='serialized'>
-    share pad
-  </a>
   <p>Double-click a trigger(letter) to edit sample source</p>
   <p>shift-press trigger sets a new start time ~</p>
   <p>ctrl-press trigger sets end ~</p>

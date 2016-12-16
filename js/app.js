@@ -169,6 +169,9 @@ var samplr = new Vue({
     },
     setStartNow:function(key){
       var clip_launcher = stems[key];
+      if (!clip_launcher){
+        return;
+      }
       var sample = this.samples[clip_launcher.clip_id()];
       sample.start=clip_launcher.getCurrentTime();
       clip_launcher.start=sample.start;
