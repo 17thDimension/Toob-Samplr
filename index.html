@@ -4,14 +4,14 @@
   <script src="https://unpkg.com/vue-resource@1.0.3/dist/vue-resource.js"></script>
   <script src='https://unpkg.com/underscore@1.8.3/underscore-min.js'></script>
   <script url='https://www.youtube.com/player_api'></script>
-  <link href="css/app.css" rel="stylesheet" type="text/css">
+  <link href="/css/app.css" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet">
   <style>
 .pads{
   display: inline-block;
 }
 html{
-  font-family: 'Indie Flower', cursive;
+  font-family: 'Indie Flower', cursive!important;
   background-color: pink;
 }
 .pads{
@@ -28,71 +28,77 @@ input{
 </head>
 <section class="samplr">
   <header>
-    <h1>TS-17</h1>
-    <div class='add-sample' v-if='adding'>
-    <input class="edit-half"
-      autofocus autocomplete="off"
-      placeholder="youtube id"
-      v-model="newsample.id">
-    <input class="edit-half"
-      autofocus autocomplete="off"
-      maxchars='1'
-      placeholder="trigger // key"
-      v-model="newsample.trigger">
-    <input class="edit-half"
-      autofocus autocomplete="off"
-      placeholder="start time"
-      type='number'
-      @blur="addsample"
-      v-model="newsample.start">
-      <input class="edit-half"
-        autofocus autocomplete="off"
-        placeholder="end time"
-        type='number'
-        @blur="addsample"
-        v-model="newsample.end">
-
-      <button class='edit' v-on:click='addsample'>
-        add sample
-      </button>
-    </div>
+      <h1>TS-17</h1>
   </header>
-  <button class='edit' v-on:click='adding = true'>
+  <button class='edit' v-on:click='editing = true'>
     new sample
   </button>
   <section class="main" v-show="samples.length" v-cloak>
     <ul class="sample-list">
       <span v-for="(sample, i) in filteredsamples"
         class="sample"
-        :key="sample.id"
-        :class="{ editing: sample == editedsample }">
+        :key="sample.id">
         <div class="pads">
           <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:1 ,inline:1}" player-width="150" player-height="150" @ready='ready' :video-id='sample.id'></youtube>
           <button class="duplicate" @click="duplicate(sample)">+</button>
-          <label @dblclick="editsample(sample)">{{sample.loop?'∞':'~'}} {{ sample.trigger }} {{sample.loop?'∞':'~'}} </label>
+          <label @dblclick="editsample(sample)">{{sample.loop?'∞':'~'}} {{ sample.trigger }} {{seconds(sample)}} {{sample.loop?'∞':'~'}} </label>
           <button class="destroy" @click="removesample(sample)">X</button>
         </div>
-        <span class='editor'  v-if='editedsample && editedsample.trigger == sample.trigger'>
-          <input class="edit-half" type="text"
-            v-model="sample.id"
-            placeholder="youtube ID">
-          <button v-on:click='doneEdit(sample)' class='save'>
-            (complete)
-          </button>
-        </span>
-      </span>
     </ul>
   </section>
+<section v-cloak class='edit'>
+    <transition  v-if="editing" name="modal">
+      <div class="modal-mask">
+        <div class="modal-wrapper">
+          <div class="modal-container">
+
+            <div class="modal-header">
+              {{editedsample.id}}
+            </div>
+            <div class="modal-body">
+              <slot name="body">
+                <span class=''  v-if='editedsample'>
+                  <input class="edit" type="text"
+                    v-model="editedsample.trigger"
+                    placeholder="Trigger ~ (key)">
+                  </br>
+                       <input class="edit" type="text"
+                         v-model="editedsample.id"
+                         placeholder="youtube ID">
+                       </br>
+                       <label><span class='left'>s t a r t </span> <span class='center'>/ /</span><span class='right'> e n d</span> </label>
+                     </br>
+                         <input class="edit-half left" type="text"
+                           v-model="editedsample.start"
+                           placeholder="start">
+                           <input class="edit-half right" type="text"
+                             v-model="editedsample.end"
+                             placeholder="end">
+               </span>
+                  <button v-on:click='doneEdit(editedsample)' class='complete'>
+                    (save)
+                  </button>
+              </span>
+              </slot>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+</section>
   <footer class="footer" v-cloak>
     <span class="sample-count">
+
+
       <strong>{{ remaining }}</strong> {{ remaining | pluralize }} registered
-      <a v-show="samples.length" :href='serialized'>
-        share link
-      </a>
     </span>
   </footer>
 </section>
 <footer class="info">
+  <a v-show="samples.length" :href='serialized'>
+    share pad
+  </a>
   <p>Double-click a trigger(letter) to edit sample source</p>
   <p>shift-press trigger sets a new start time ~</p>
   <p>ctrl-press trigger sets end ~</p>

@@ -36,7 +36,8 @@ var samplr = new Vue({
     samples: sampleStorage.fetch(),
     newsample: {},
     adding: false,
-    editedsample: null,
+    editedsample: {},
+    editing: false,
     visibility: 'all'
   },
   // watch samples change for localStorage persistence
@@ -53,7 +54,6 @@ var samplr = new Vue({
           return;
         }
         if (window.stems && sample && oldSample && oldSample.trigger && sample.trigger && oldSample.trigger != sample.trigger){
-          console.log(oldSample.trigger,"=>",sample.trigger);
           Object.defineProperty(stems, sample.trigger,Object.getOwnPropertyDescriptor(stems, oldSample.trigger));
           delete stems[oldSample.trigger]
         }
@@ -92,8 +92,13 @@ var samplr = new Vue({
     }
   },
   methods: {
+    seconds:function(sample){
+      return (sample.end-sample.start).toFixed(0);
+    },
     loadHashState:function(){
-      this.samples = JSON.parse(hash_state);
+      if (confirm('Do you want to overwrite the pad with what is in the hash?')){
+        this.samples = JSON.parse(hash_state);
+      }
     },
     ready:function(player){
       var trigger = player.b.c.playerVars.trigger;
@@ -103,6 +108,10 @@ var samplr = new Vue({
       player.start = function(){
         return player.b.c.playerVars.start;
       }
+      player.start = function(){
+        return player.b.c.playerVars.start;
+      }
+      console.log(trigger,'ready',player.clip_id());
       window.stems[trigger] = player
       window.active_pads[trigger]=false;
       window.unassigned_pads.splice(trigger,1);
@@ -118,21 +127,23 @@ var samplr = new Vue({
         id: value.id,
         trigger: window.unassigned_pads.pop(),
         start: value.start,
-        duration: value.duration,
+        end: value.end,
         loop: value.loop
       })
-      this.newsample = {}
     },
     trigger:function(key){
       var clip_launcher = stems[key];
-      if (!clip_launcher){
+      if (!clip_launcher||active_pads==true){
         return;
       }
-      clip_launcher.playVideo();
       var sample = this.samples[clip_launcher.clip_id()];
-      clip_launcher.seekTo(sample.start)
+      if (!window.active_pads[sample.trigger]){
+        clip_launcher.playVideo();
+        clip_launcher.seekTo(sample.start)
+      }else{
+        return;
+      }
       window.active_pads[key]=true;
-      var sample = this.samples[clip_launcher.clip_id()];
       if(!sample.loop && sample.end > sample.start){
         //set timeout to decay sample
         if (clip_launcher.hasOwnProperty('timeout')){
@@ -156,7 +167,7 @@ var samplr = new Vue({
 
       }
     },
-    startNow:function(key){
+    setStartNow:function(key){
       var clip_launcher = stems[key];
       var sample = this.samples[clip_launcher.clip_id()];
       sample.start=clip_launcher.getCurrentTime();
@@ -168,13 +179,10 @@ var samplr = new Vue({
         return;
       }
       var sample = this.samples[clip_launcher.clip_id()];
-      if (sample.end > clip_launcher.getCurrentTime())
+      if (sample.end < clip_launcher.getCurrentTime())
       {
-        this.decay();
-      }else{
-        console.log('holding pad ~ exxxtra');
+        this.decay(key);
       }
-
 
     },
     decay:function(key){
@@ -200,7 +208,7 @@ var samplr = new Vue({
         this.decay(key);
       }
     },
-    setEnd:function(key){
+    setEndNow:function(key){
       var clip_launcher = stems[key];
       if (!clip_launcher){
         return;
@@ -232,7 +240,6 @@ var samplr = new Vue({
         trigger: value.trigger,
         start: 0,
         end: -1,
-        duration: value.duration,
         loop: false
       })
       this.newsample = {}
@@ -242,6 +249,7 @@ var samplr = new Vue({
       this.samples.splice(this.samples.indexOf(sample), 1)
     },
     editsample: function (sample) {
+      this.editing=true;
       this.beforeEditCache = Vue.util.extend({}, sample)
       this.editedsample = sample
     },
@@ -253,12 +261,16 @@ var samplr = new Vue({
         sample.id=sample.id.substring(sample.id.indexOf('?v=')+3);
       }
       var index = this.samples.indexOf(sample)
-      Vue.set(this.samples,index, sample);
-      this.editedsample = null
-
+      if (index==-1){
+        this.samples.push(sample);
+      }else{
+        Vue.set(this.samples,index, sample);
+      }
+      this.editedsample = {}
+      this.editing=false;
     },
     cancelEdit: function (sample) {
-      this.editedsample = null
+      this.editedsample = {}
       sample = this.beforeEditCache
     },
     removediscounted: function () {
@@ -290,7 +302,6 @@ onHashChange()
 samplr.$mount('.samplr')
 window.onkeydown = function(e){
   if (e.keyCode==16){
-    window.active_pads;
     return;
   }
   var key = e.key.toLowerCase()
@@ -300,12 +311,12 @@ window.onkeydown = function(e){
     return;
   }
   if (e.ctrlKey){
-    samplr.setEnd(key);
+    samplr.setEndNow(key);
     samplr.decay(key);
     return;
   }
   if (e.shiftKey){
-    samplr.startNow(key);
+    samplr.setStartNow(key);
     return;
   }
   if (idle_pad){
@@ -314,7 +325,23 @@ window.onkeydown = function(e){
 
 };
 window.onkeyup = function(e){
+  if (e.keyCode==16){
+    return;
+  }
   var key = e.key.toLowerCase()
   window.active_pads[key]=false
+  if (e.shiftKey){
+    samplr.setStartNow(key);
+    return;
+  }
+  if (e.ctrlKey){
+    samplr.setEndNow(key);
+    samplr.decay(key);
+    return;
+  }
   samplr.release(key);
+
 };
+setInterval(function(){
+  document.getElementById("body").focus()
+},1000)
