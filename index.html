@@ -39,7 +39,7 @@ input{
         class="sample"
         :key="sample.id">
         <div class="pads">
-          <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:1 ,inline:1}" player-width="150" player-height="150" @ready='ready' :video-id='sample.id'></youtube>
+          <youtube :player-vars="{showinfo:0,modestbranding: 1,start:sample.start,clip_id:i,trigger: sample.trigger,controls:0 ,inline:1}" controls='1' player-width="72" player-height="72" @ready='ready' :video-id='sample.id'></youtube>
           <button class="duplicate" @click="duplicate(sample)">+</button>
           <label @dblclick="editsample(sample)">{{sample.loop?'∞':'~'}} {{ sample.trigger }} {{seconds(sample)}} {{sample.loop?'∞':'~'}} </label>
           <button class="destroy" @click="removesample(sample)">X</button>

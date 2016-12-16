@@ -405,3 +405,14 @@ h1{
 	padding:10px;
 	font-size: 17px;
 }
+input[type=range][orient=vertical]
+{
+    writing-mode: bt-lr; /* IE */
+    -webkit-appearance: slider-vertical; /* WebKit */
+    width: 17px;
+    height: 100px;
+    padding: 0 5px;
+}
+iframe{
+	padding:20px;
+}

@@ -342,6 +342,3 @@ window.onkeyup = function(e){
   samplr.release(key);
 
 };
-setInterval(function(){
-  document.getElementById("body").focus()
-},1000)
