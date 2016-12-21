@@ -88,6 +88,7 @@ input{
 
 </section>
   <footer class="footer" v-cloak>
+
     <span class="sample-count">
       <strong>{{ samples.length }}</strong> {{ samples | pluralize }} registered
       <a v-show="samples.length" :href='serialized'>
@@ -101,6 +102,7 @@ input{
   <p>shift-press trigger sets a new start time ~</p>
   <p>ctrl-press trigger sets end ~</p>
   <p>ctrl-shift-press trigger toggles loop ~</p>
+  <p>press arrow up or arrow down to change playback speed ~</p>
   <a href='https://github.com/17thDimension/Toob-Samplr/issues/new'>issues?</a>
 </footer>
 <style>

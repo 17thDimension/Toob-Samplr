@@ -38,7 +38,9 @@ var samplr = new Vue({
     adding: false,
     editedsample: {},
     editing: false,
-    visibility: 'all'
+    visibility: 'all',
+    keys_down:[],
+    playback_rates:[.5,1,1.25,1.5,2]
   },
   // watch samples change for localStorage persistence
   watch: {
@@ -108,10 +110,9 @@ var samplr = new Vue({
       player.start = function(){
         return player.b.c.playerVars.start;
       }
-      player.start = function(){
-        return player.b.c.playerVars.start;
+      player.end = function(){
+        return player.b.c.playerVars.end;
       }
-      console.log(trigger,'ready',player.clip_id());
       window.stems[trigger] = player
       window.active_pads[trigger]=false;
       window.unassigned_pads.splice(trigger,1);
@@ -197,6 +198,21 @@ var samplr = new Vue({
         clip_launcher.pauseVideo();
       }
     },
+    slowDown:function(key){
+      var clip_launcher = stems[key];
+      var current_rate = clip_launcher.getPlaybackRate();
+      var prev_index = (this.playback_rates.indexOf(current_rate)-1) % this.playback_rates.length
+      var new_playback_rate = this.playback_rates[prev_index];
+      clip_launcher.setPlaybackRate(new_playback_rate)
+    },
+    speedUp:function(key){
+      var clip_launcher = stems[key];
+      var current_rate = clip_launcher.getPlaybackRate();
+      var next_index = (this.playback_rates.indexOf(current_rate)+1) % this.playback_rates.length
+      var new_playback_rate = this.playback_rates[next_index];
+      clip_launcher.setPlaybackRate(new_playback_rate)
+    },
+
     toggleloop:function(key){
       var clip_launcher = stems[key];
       var sample = this.samples[clip_launcher.clip_id()];
@@ -221,7 +237,6 @@ var samplr = new Vue({
       clip_launcher.end=sample.start;
       var clip_launcher = stems[key];
       if (clip_launcher){
-        console.log('ending sample at ' + sample.end)
         if (sample.loop){
           samplr.trigger(key);
         }else{
@@ -276,8 +291,9 @@ var samplr = new Vue({
       this.editedsample = {}
       sample = this.beforeEditCache
     },
-    removediscounted: function () {
-      this.samples = filters.active(this.samples)
+    last_pad: function () {
+      var index = _(this.keys_down).findLastIndex(function(k){return k.length == 1});
+      return this.keys_down[index];
     }
   },
   // a custom directive to wait for the DOM to be updated
@@ -304,11 +320,19 @@ onHashChange()
 // mount
 samplr.$mount('.samplr')
 window.onkeydown = function(e){
-  if (e.keyCode==16){
-    return;
-  }
   var key = e.key.toLowerCase()
   var idle_pad =  window.active_pads[key] == false;
+
+  if (samplr.keys_down.indexOf(key)==-1){
+    samplr.keys_down.push(key);
+  }
+  if (key == 'arrowup'){
+    samplr.speedUp(samplr.last_pad())
+  }
+  if (key == 'arrowdown'){
+    samplr.slowDown(samplr.last_pad())
+  }
+
   if (e.ctrlKey && e.shiftKey){
     samplr.toggleloop(key);
     return;
@@ -325,14 +349,14 @@ window.onkeydown = function(e){
   if (idle_pad){
     samplr.trigger(key);
   }
-
 };
 window.onkeyup = function(e){
-  if (e.keyCode==16){
-    return;
-  }
   var key = e.key.toLowerCase()
   window.active_pads[key]=false
+  if (samplr.keys_down.indexOf(key)!=-1){
+    samplr.keys_down.pop(key);
+  }
+
   if (e.shiftKey){
     samplr.setStartNow(key);
     return;
